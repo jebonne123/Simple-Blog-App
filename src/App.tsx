@@ -37,7 +37,7 @@ function AppContent() {
     }
 
     restoreSession()
-  }, [dispatch])
+  }, [dispatch, navigate])
 
   return (
     <Routes>
