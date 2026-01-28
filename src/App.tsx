@@ -8,6 +8,7 @@ import Register from './pages/Register'
 import Blog from './pages/Blog'
 import CreatePost from './pages/BlogCreatePost'
 import BlogMyBlogs from './pages/BlogMyBlogs'
+import BlogEdit from './pages/BlogEdit'
 
 function AppContent() {
   const dispatch = useAppDispatch()
@@ -47,6 +48,7 @@ function AppContent() {
       <Route path="/blog" element={<Blog />} />
       <Route path="/create-post" element={<CreatePost />} />
       <Route path="/my-blogs" element={<BlogMyBlogs />} />
+      <Route path="/edit/:id" element={<BlogEdit />} />
     </Routes>
   )
 }

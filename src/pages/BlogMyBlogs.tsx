@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
 import { setBlogs, deleteBlog } from '../features/blog/blogSlice'
 import { supabase } from '../supabaseClient'
@@ -15,6 +16,7 @@ interface Blog {
 }
 
 function BlogMyBlogs() {
+  const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const user = useAppSelector((state) => state.auth.user)
   const allBlogs = useAppSelector((state) => state.blogs.blogs)
@@ -129,6 +131,7 @@ function BlogMyBlogs() {
               <div className="absolute top-6 right-6 flex gap-2">
                 <button
                   type="button"
+                  onClick={() => navigate(`/edit/${blog.id}`)}
                   className="p-2 text-slate-400 hover:text-blue-400 hover:bg-slate-700 rounded-md transition-colors cursor-pointer"
                   title="Edit"
                 >
