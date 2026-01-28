@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
-import { useAppDispatch, useAppSelector } from '../app/hooks'
+import { useAppDispatch } from '../app/hooks'
 import { setUser, setError } from '../features/auth/authSlice'
 
 function Login() {
@@ -10,8 +10,6 @@ function Login() {
   
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-
-  const user = useAppSelector((state) => state.auth.user)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
