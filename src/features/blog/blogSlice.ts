@@ -22,8 +22,11 @@ const blogSlice = createSlice({
     setBlogs(state, action: PayloadAction<Blog[]>) {
       state.blogs = action.payload
     },
+    deleteBlog(state, action: PayloadAction<string>) {
+      state.blogs = state.blogs.filter((blog) => blog.id !== action.payload)
+    },
   },
 })
 
-export const { setBlogs } = blogSlice.actions
+export const { setBlogs, deleteBlog } = blogSlice.actions
 export default blogSlice.reducer

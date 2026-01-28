@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
-import { setBlogs } from '../features/blog/blogSlice'
+import { setBlogs, deleteBlog } from '../features/blog/blogSlice'
 import { supabase } from '../supabaseClient'
 import Header from '../components/Header'
 
@@ -63,6 +63,44 @@ function BlogMyBlogs() {
     return allBlogs.filter((blog) => blog.user_id === user.id)
   }, [allBlogs, user])
 
+  async function handleDelete(blogId: string, imageUrl?: string) {
+    if (!confirm('Are you sure you want to delete this blog post?')) {
+      return
+    }
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('blogs')
+        .delete()
+        .eq('id', blogId)
+
+      if (deleteError) {
+        alert(`Failed to delete blog: ${deleteError.message}`)
+        return
+      }
+
+      if (imageUrl) {
+        const urlParts = imageUrl.split('/')
+        const fileName = urlParts[urlParts.length - 1]
+        
+        if (fileName) {
+          const { error: storageError } = await supabase.storage
+            .from('blog-images')
+            .remove([fileName])
+
+          if (storageError) {
+            console.error('Failed to delete image:', storageError)
+          }
+        }
+      }
+
+      dispatch(deleteBlog(blogId))
+    } catch (err) {
+      console.error('Failed to delete blog:', err)
+      alert('Failed to delete blog post')
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-900">
       <Header />
@@ -100,6 +138,7 @@ function BlogMyBlogs() {
                 </button>
                 <button
                   type="button"
+                  onClick={() => handleDelete(blog.id, blog.image?.url)}
                   className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded-md transition-colors cursor-pointer"
                   title="Delete"
                 >
