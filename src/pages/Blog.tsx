@@ -72,7 +72,56 @@ function Blog() {
       <Header />
 
       <main className="max-w-4xl mx-auto py-8 px-4">
-        <h1 className="text-4xl font-bold text-white mb-8 text-center">Blog Posts</h1>
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-4xl font-bold text-white">Blog Posts</h1>
+          
+          {!loading && !error && totalPages > 1 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 rounded-md bg-slate-700 text-slate-100 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-sm"
+              >
+                Previous
+              </button>
+              
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                  if (
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= currentPage - 1 && page <= currentPage + 1)
+                  ) {
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-2.5 py-1.5 rounded-md text-sm ${
+                          currentPage === page
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-700 text-slate-100 hover:bg-slate-600'
+                        } cursor-pointer`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  } else if (page === currentPage - 2 || page === currentPage + 2) {
+                    return <span key={page} className="text-slate-400 px-1 text-sm">...</span>
+                  }
+                  return null
+                })}
+              </div>
+              
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 rounded-md bg-slate-700 text-slate-100 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-sm"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
 
         {loading && (
           <div className="text-center text-slate-400 py-8">Loading blogs...</div>
@@ -131,53 +180,6 @@ function Blog() {
                 </div>
             ))}
         </div>
-
-        {!loading && !error && totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-8 flex-wrap">
-            <button
-              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className="px-4 py-2 rounded-md bg-slate-700 text-slate-100 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            >
-              Previous
-            </button>
-            
-            <div className="flex items-center gap-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                if (
-                  page === 1 ||
-                  page === totalPages ||
-                  (page >= currentPage - 1 && page <= currentPage + 1)
-                ) {
-                  return (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-2 rounded-md ${
-                        currentPage === page
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-700 text-slate-100 hover:bg-slate-600'
-                      } cursor-pointer`}
-                    >
-                      {page}
-                    </button>
-                  )
-                } else if (page === currentPage - 2 || page === currentPage + 2) {
-                  return <span key={page} className="text-slate-400 px-1">...</span>
-                }
-                return null
-              })}
-            </div>
-            
-            <button
-              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 rounded-md bg-slate-700 text-slate-100 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            >
-              Next
-            </button>
-          </div>
-        )}
       </main>
     </div>
   )
