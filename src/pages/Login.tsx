@@ -22,6 +22,7 @@ function Login() {
 
       if (error || !data.user) {
         dispatch(setError(error?.message ?? 'Login failed'))
+        alert(error?.message ?? 'Login failed')
         return
       }
 
