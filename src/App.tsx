@@ -9,6 +9,7 @@ import Blog from './pages/Blog'
 import CreatePost from './pages/BlogCreatePost'
 import BlogMyBlogs from './pages/BlogMyBlogs'
 import BlogEdit from './pages/BlogEdit'
+import BlogComment from './pages/BlogComment'
 
 function AppContent() {
   const dispatch = useAppDispatch()
@@ -49,6 +50,7 @@ function AppContent() {
       <Route path="/create-post" element={<CreatePost />} />
       <Route path="/my-blogs" element={<BlogMyBlogs />} />
       <Route path="/edit/:id" element={<BlogEdit />} />
+      <Route path="/blog/:id/comments" element={<BlogComment />} />
     </Routes>
   )
 }

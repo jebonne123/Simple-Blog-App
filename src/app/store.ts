@@ -4,6 +4,7 @@ import dogsReducer from "../features/dogs/dogsSlice";
 import authReducer from "../features/auth/authSlice";
 import usersReducer from "../features/users/userSlice";
 import blogsReducer from "../features/blog/blogSlice";
+import commentsReducer from "../features/comments/commentSlice";
 
 export const store = configureStore({
     reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
         auth: authReducer,
         users: usersReducer,
         blogs: blogsReducer,
+        comments: commentsReducer,
     },
 });
 
