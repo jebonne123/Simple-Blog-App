@@ -1,7 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
-import { setComments, addComment } from '../features/comments/commentSlice'
+import { setComments, addComment, deleteComment, updateComment, type Comment } from '../features/comments/commentSlice'
 import { supabase } from '../supabaseClient'
 import Header from '../components/Header'
 
@@ -18,6 +18,11 @@ function BlogComment() {
   const [imagePreview, setImagePreview] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
+  const [editContent, setEditContent] = useState('')
+  const [editImageFile, setEditImageFile] = useState<File | null>(null)
+  const [editImagePreview, setEditImagePreview] = useState<string>('')
+  const [removeEditImage, setRemoveEditImage] = useState(false)
   const [blog, setBlog] = useState<{
     id: string
     title: string
@@ -179,6 +184,119 @@ function BlogComment() {
     }
   }
 
+  async function handleDelete(commentId: string, imageUrl?: string | null) {
+    if (!confirm('Are you sure you want to delete this comment?')) {
+      return
+    }
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('comments')
+        .delete()
+        .eq('id', commentId)
+
+      if (deleteError) {
+        alert(`Failed to delete comment: ${deleteError.message}`)
+        return
+      }
+
+      if (imageUrl) {
+        const fileName = imageUrl.split('/').pop()
+        if (fileName) {
+          await supabase.storage.from('comment-images').remove([fileName])
+        }
+      }
+
+      dispatch(deleteComment(commentId))
+    } catch (err) {
+      alert('Failed to delete comment')
+    }
+  }
+
+  function startEditing(comment: Comment) {
+    setEditingCommentId(comment.id)
+    setEditContent(comment.content || '')
+    setEditImagePreview('')
+    setEditImageFile(null)
+    setRemoveEditImage(false)
+  }
+
+  function cancelEditing() {
+    setEditingCommentId(null)
+    setEditContent('')
+    setEditImagePreview('')
+    setEditImageFile(null)
+    setRemoveEditImage(false)
+  }
+
+  async function handleEditSubmit(comment: Comment) {
+    if (!user) return
+
+    if (!editContent.trim() && !editImageFile && (removeEditImage || !comment.image_url)) {
+      alert('Please enter a comment or upload an image')
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      let finalImageUrl = comment.image_url
+
+      if ((editImageFile || removeEditImage) && comment.image_url) {
+        const fileName = comment.image_url.split('/').pop()
+        if (fileName) {
+          await supabase.storage.from('comment-images').remove([fileName])
+        }
+      }
+
+      if (editImageFile) {
+        const fileName = `${user.id}-${Date.now()}-${editImageFile.name}`
+        const { data, error } = await supabase.storage.from('comment-images').upload(fileName, editImageFile)
+
+        if (error || !data) {
+          alert(`Failed to upload image: ${error?.message || 'Unknown error'}`)
+          setIsSubmitting(false)
+          return
+        }
+
+        const { data: publicUrlData } = supabase.storage.from('comment-images').getPublicUrl(data.path)
+        finalImageUrl = publicUrlData.publicUrl
+      } else if (removeEditImage) {
+        finalImageUrl = null
+      }
+
+      const { error: updateError } = await supabase
+        .from('comments')
+        .update({
+          content: editContent.trim() || null,
+          image_url: finalImageUrl,
+        })
+        .eq('id', comment.id)
+
+      if (updateError) {
+        alert(`Failed to update comment: ${updateError.message}`)
+        setIsSubmitting(false)
+        return
+      }
+
+      const updatedComment = {
+        id: comment.id,
+        blog_id: comment.blog_id,
+        content: editContent.trim() || null,
+        image_url: finalImageUrl,
+        user_id: comment.user_id,
+        user_email: comment.user_email,
+        created_at: comment.created_at,
+      }
+      dispatch(updateComment(updatedComment))
+      cancelEditing()
+    } catch (err) {
+      alert('Failed to update comment')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
 
   if (!blog) {
     return (
@@ -238,24 +356,143 @@ function BlogComment() {
             {commentsForBlog.map((comment) => (
               <div
                 key={comment.id}
-                className="bg-slate-900 rounded-lg border border-slate-700 p-4"
+                className="bg-slate-900 rounded-lg border border-slate-700 p-4 relative"
               >
-                <p className="text-slate-400 text-xs mb-2">
-                  User: <span className="text-slate-300 font-medium">{comment.user_email || comment.user_id}</span> • {new Date(comment.created_at).toLocaleString()}
-                </p>
+                <div className="flex items-start justify-between mb-2">
+                  <p className="text-slate-400 text-xs">
+                    User: <span className="text-slate-300 font-medium">{comment.user_email || comment.user_id}</span> • {new Date(comment.created_at).toLocaleString()}
+                  </p>
+                  
+                  {user && user.id === comment.user_id && editingCommentId !== comment.id && (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => startEditing(comment)}
+                        className="p-1 text-slate-400 hover:text-blue-400 cursor-pointer"
+                        title="Edit"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(comment.id, comment.image_url)}
+                        className="p-1 text-slate-400 hover:text-red-400 cursor-pointer"
+                        title="Delete"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                </div>
 
-                {comment.content && (
-                  <p className="text-slate-200 mb-2">{comment.content}</p>
-                )}
-
-                {comment.image_url && (
-                  <div className="rounded-md overflow-hidden mb-2 max-w-md">
-                    <img
-                      src={comment.image_url}
-                      alt="Comment"
-                      className="w-full h-auto object-contain"
+                {editingCommentId === comment.id ? (
+                  <div className="space-y-4">
+                    <textarea
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      placeholder="Edit your comment..."
+                      rows={3}
+                      className="w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                     />
+
+                    {comment.image_url && !removeEditImage && (
+                      <div>
+                        <div className="rounded-md overflow-hidden mb-2 max-w-md">
+                          <img
+                            src={comment.image_url}
+                            alt="Comment"
+                            className="w-full h-auto object-contain"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setRemoveEditImage(true)}
+                          className="text-xs text-red-400 hover:text-red-300 cursor-pointer"
+                        >
+                          Remove Image
+                        </button>
+                      </div>
+                    )}
+
+                    {(removeEditImage || !comment.image_url) && (
+                      <div>
+                        {removeEditImage && (
+                          <div className="mb-2">
+                            <button
+                              type="button"
+                              onClick={() => setRemoveEditImage(false)}
+                              className="text-xs text-blue-400 hover:text-blue-300 cursor-pointer"
+                            >
+                              Undo
+                            </button>
+                          </div>
+                        )}
+
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] ?? null
+                            setEditImageFile(file)
+                            if (file) {
+                              setEditImagePreview(URL.createObjectURL(file))
+                            } else {
+                              setEditImagePreview('')
+                            }
+                          }}
+                          className="block w-full text-sm text-slate-100 file:mr-2 file:rounded-md file:border-0 file:bg-slate-700 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-slate-100 hover:file:bg-slate-600 cursor-pointer"
+                        />
+
+                        {editImagePreview && (
+                          <div className="mt-2 rounded-md overflow-hidden max-w-md">
+                            <img
+                              src={editImagePreview}
+                              alt="Preview"
+                              className="w-full h-auto object-contain"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleEditSubmit(comment)}
+                        disabled={isSubmitting}
+                        className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-50 cursor-pointer"
+                      >
+                        {isSubmitting ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelEditing}
+                        className="rounded-md bg-slate-700 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-600 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
+                ) : (
+                  <>
+                    {comment.content && (
+                      <p className="text-slate-200 mb-2">{comment.content}</p>
+                    )}
+
+                    {comment.image_url && (
+                      <div className="rounded-md overflow-hidden mb-2 max-w-md">
+                        <img
+                          src={comment.image_url}
+                          alt="Comment"
+                          className="w-full h-auto object-contain"
+                        />
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             ))}
