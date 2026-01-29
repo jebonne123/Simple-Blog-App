@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
 import { setBlogs } from '../features/blog/blogSlice'
+import { setComments } from '../features/comments/commentSlice'
 import Header from '../components/Header'
 
 interface Blog {
@@ -57,7 +58,36 @@ function Blog() {
       }
     }
 
+    async function fetchComments() {
+      try {
+        const { data, error } = await supabase
+          .from('comments')
+          .select('*')
+          .order('created_at', { ascending: false })
+
+        if (error) {
+          console.error('Error fetching comments:', error)
+          return
+        }
+
+        const comments = (data || []).map((comment) => ({
+          id: comment.id,
+          blog_id: comment.blog_id,
+          content: comment.content,
+          image_url: comment.image_url,
+          user_id: comment.user_id,
+          user_email: comment.user_email,
+          created_at: comment.created_at,
+        }))
+
+        dispatch(setComments(comments))
+      } catch (err) {
+        console.error('Failed to fetch comments:', err)
+      }
+    }
+
     fetchBlogs()
+    fetchComments()
   }, [dispatch])
 
   const totalPages = Math.ceil(blogs.length / itemsPerPage)
