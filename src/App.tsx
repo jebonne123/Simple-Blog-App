@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { useAppDispatch } from './app/hooks'
 import { setUser, logout } from './features/auth/authSlice'
 import { supabase } from './supabaseClient'
@@ -14,6 +14,7 @@ import BlogComment from './pages/BlogComment'
 function AppContent() {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     async function restoreSession() {
@@ -34,12 +35,14 @@ function AppContent() {
         dispatch(setUser(user))
       } else {
         dispatch(logout())
-        navigate('/login')
+        if (location.pathname !== '/login' && location.pathname !== '/register') {
+          navigate('/login')
+        }
       }
     }
 
     restoreSession()
-  }, [dispatch, navigate])
+  }, [dispatch, navigate, location.pathname])
 
   return (
     <Routes>

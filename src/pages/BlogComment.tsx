@@ -123,7 +123,7 @@ function BlogComment() {
       if (imageFile) {
         const fileName = `${user.id}-${Date.now()}-${imageFile.name}`
 
-        const { data, error } = await supabase.storage.from('blog-images').upload(fileName, imageFile)
+        const { data, error } = await supabase.storage.from('comment-images').upload(fileName, imageFile)
 
         if (error || !data) {
           alert(`Failed to upload image: ${error?.message || 'Unknown error'}`)
@@ -132,7 +132,7 @@ function BlogComment() {
         }
 
         const { data: publicUrlData } = supabase.storage
-          .from('blog-images')
+          .from('comment-images')
           .getPublicUrl(data.path)
 
         uploadedImageUrl = publicUrlData.publicUrl

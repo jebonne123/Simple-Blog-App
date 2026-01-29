@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
@@ -22,6 +22,8 @@ function Blog() {
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
 
   useEffect(() => {
     async function fetchBlogs() {
@@ -58,6 +60,13 @@ function Blog() {
     fetchBlogs()
   }, [dispatch])
 
+  const totalPages = Math.ceil(blogs.length / itemsPerPage)
+  const paginatedBlogs = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return blogs.slice(startIndex, endIndex)
+  }, [blogs, currentPage, itemsPerPage])
+
   return (
     <div className="min-h-screen bg-slate-900">
       <Header />
@@ -80,7 +89,7 @@ function Blog() {
         )}
 
         <div className="space-y-6">
-            {blogs.map((blog) => (
+            {paginatedBlogs.map((blog) => (
                 <div
                 key={blog.id}
                 className="bg-slate-800 rounded-lg border border-slate-700 p-6"
@@ -122,6 +131,53 @@ function Blog() {
                 </div>
             ))}
         </div>
+
+        {!loading && !error && totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-8 flex-wrap">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 rounded-md bg-slate-700 text-slate-100 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              Previous
+            </button>
+            
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                if (
+                  page === 1 ||
+                  page === totalPages ||
+                  (page >= currentPage - 1 && page <= currentPage + 1)
+                ) {
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-2 rounded-md ${
+                        currentPage === page
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-slate-700 text-slate-100 hover:bg-slate-600'
+                      } cursor-pointer`}
+                    >
+                      {page}
+                    </button>
+                  )
+                } else if (page === currentPage - 2 || page === currentPage + 2) {
+                  return <span key={page} className="text-slate-400 px-1">...</span>
+                }
+                return null
+              })}
+            </div>
+            
+            <button
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 rounded-md bg-slate-700 text-slate-100 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              Next
+            </button>
+          </div>
+        )}
       </main>
     </div>
   )
