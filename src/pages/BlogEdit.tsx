@@ -16,6 +16,9 @@ function BlogEdit() {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [imageUrl, setImageUrl] = useState<string>('')
+  const [newImageFile, setNewImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string>('')
+  const [removeImage, setRemoveImage] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -80,11 +83,37 @@ function BlogEdit() {
     setIsSubmitting(true)
 
     try {
+      let finalImageUrl = imageUrl
+
+      if ((newImageFile || removeImage) && imageUrl) {
+        const fileName = imageUrl.split('/').pop()
+        if (fileName) {
+          await supabase.storage.from('blog-images').remove([fileName])
+        }
+      }
+
+      if (newImageFile) {
+        const fileName = `${user.id}-${Date.now()}-${newImageFile.name}`
+        const { data, error } = await supabase.storage.from('blog-images').upload(fileName, newImageFile)
+
+        if (error || !data) {
+          alert(`Failed to upload image: ${error?.message || 'Unknown error'}`)
+          setIsSubmitting(false)
+          return
+        }
+
+        const { data: publicUrlData } = supabase.storage.from('blog-images').getPublicUrl(data.path)
+        finalImageUrl = publicUrlData.publicUrl
+      } else if (removeImage) {
+        finalImageUrl = ''
+      }
+
       const { error: updateError } = await supabase
         .from('blogs')
         .update({
           title,
           content,
+          image_url: finalImageUrl || null,
         })
         .eq('id', id)
 
@@ -98,7 +127,7 @@ function BlogEdit() {
         id,
         title,
         content,
-        image: { url: imageUrl },
+        image: { url: finalImageUrl },
         user_id: user.id,
         user_email: user.email,
         date: new Date().toISOString(),
@@ -159,18 +188,71 @@ function BlogEdit() {
             />
           </div>
 
-          {imageUrl && imageUrl.trim() !== '' && (
+          {imageUrl && imageUrl.trim() !== '' && !removeImage && (
             <div>
               <label className="block text-sm font-medium text-slate-100 mb-2">
-                Current Image
+                Image
               </label>
-              <div className="rounded-md overflow-hidden">
+              <div className="rounded-md overflow-hidden mb-2 max-w-md">
                 <img
                   src={imageUrl}
                   alt="Current"
-                  className="w-full h-full object-contain"
+                  className="w-full h-auto object-contain"
                 />
               </div>
+              <button
+                type="button"
+                onClick={() => setRemoveImage(true)}
+                className="text-sm text-red-400 hover:text-red-300 cursor-pointer"
+              >
+                Remove Image
+              </button>
+            </div>
+          )}
+
+          {(removeImage || !imageUrl || imageUrl.trim() === '') && (
+            <div>
+              <label className="block text-sm font-medium text-slate-100 mb-2">
+                Image
+              </label>
+
+              {removeImage && (
+                <div className="mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setRemoveImage(false)}
+                    className="text-sm text-blue-400 hover:text-blue-300 cursor-pointer"
+                  >
+                    Undo
+                  </button>
+                </div>
+              )}
+
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null
+                  setNewImageFile(file)
+                  if (file) {
+                    setImagePreview(URL.createObjectURL(file))
+                  } else {
+                    setImagePreview('')
+                  }
+                }}
+                className="block w-full text-sm text-slate-100 file:mr-4 file:rounded-md file:border-0 file:bg-slate-700 file:px-4 file:py-2 file:text-sm file:font-medium file:text-slate-100 hover:file:bg-slate-600 cursor-pointer"
+              />
+
+              {imagePreview && (
+                <div className="mt-4 rounded-md overflow-hidden max-w-md">
+                  <p className="text-xs text-slate-400 mb-2">Preview:</p>
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="w-full h-auto object-contain"
+                  />
+                </div>
+              )}
             </div>
           )}
 
